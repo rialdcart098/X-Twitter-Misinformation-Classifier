@@ -5,6 +5,7 @@ import pandas as pd
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 from sklearn.model_selection import train_test_split
+import time
 
 def preprocess_data(data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -17,14 +18,18 @@ def preprocess_data(data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     labels = clean_data['label'].values
     return posts, labels
 
-def split_data(x: np.ndarray, y: np.ndarray, train_size: float = 0.8) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def get_time(func):
     """
-    :param x: np.ndarray - Input data to split
-    :param y: np.ndarray - Output data to split
-    :param train_size: float - Proportion of data to use for training
-    :return: tuple - (posts_train, posts_test, labels_train, labels_test) the split datasets
+    :param func: function - The function to time
+    :return: function - The wrapped function with timing
     """
-    return train_test_split(x, y, test_size=train_size, random_state=42, stratify=y)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"Function '{func.__name__}' executed in {end_time - start_time:.4f}s")
+        return result
+    return wrapper
 
 def preprocess_text(posts: np.ndarray):
     """
@@ -40,9 +45,74 @@ def preprocess_text(posts: np.ndarray):
         processed_posts.append(post)
     if len(posts) == 1:
         return processed_posts[0]
-    return np.array(processed_posts)
+    return np.array(processed_posts, dtype=object)
 
+def split_data(x: np.ndarray, y: np.ndarray, train_size: float = 0.8) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    :param x: np.ndarray - Input data to split
+    :param y: np.ndarray - Output data to split
+    :param train_size: float - Proportion of data to use for training
+    :return: tuple - (posts_train, posts_test, labels_train, labels_test) the split datasets
+    """
+    return train_test_split(x, y, test_size=train_size, random_state=42, stratify=y)
 
+def accuracy(tp: float, tn: float, fp: float, fn: float) -> float:
+    """
+    :param tp: float - True Positives
+    :param tn: float - True Negatives
+    :param fp: float - False Positives
+    :param fn: float - False Negatives
+    :return: float - The accuracy of the predictions
+    """
+    if (tp + tn + fp + fn) == 0: return 0.0
+    return (tp + tn) / (tp + tn + fp + fn)
+
+def precision(tp: float, fp: float) -> float:
+    """
+    :param tp: float - True Positives
+    :param fp: float - False Positives
+    :return: float - The precision of the predictions
+    """
+    if (tp + fp) == 0: return 0.0
+    return tp / (tp + fp)
+
+def recall(tp: float, fn: float) -> float:
+    """
+    :param tp: float - True Positives
+    :param fn: float - False Negatives
+    :return: float - The recall of the predictions
+    """
+    if (tp + fn) == 0: return 0.0
+    return tp / (tp + fn)
+
+def f1_score(tp: float, fp: float, fn: float) -> float:
+    """
+    :param tp: float - True Positives
+    :param fp: float - False Positives
+    :param fn: float - False Negatives
+    :return: float - The F1-score of the predictions
+    """
+    prec = precision(tp, fp)
+    rec = recall(tp, fn)
+    if (prec + rec) == 0: return 0.0
+    return 2 * (prec * rec) / (prec + rec)
+
+def metrics(y: np.ndarray, y_hat: np.ndarray) -> None:
+    """
+    :param y: np.ndarray - True labels
+    :param y_hat: np.ndarray - Predicted labels
+    :return: None - Prints the accuracy, precision, recall, and F1-score of the predictions
+    """
+    true_positives = np.sum((y == 'Fake') & (y_hat == 'Fake'))
+    true_negatives = np.sum((y == 'Real') & (y_hat == 'Real'))
+    false_positives = np.sum((y == 'Real') & (y_hat == 'Fake'))
+    false_negatives = np.sum((y == 'Fake') & (y_hat == 'Real'))
+    print('-' * 5 + ' Metrics ' + '-' * 5)
+    print(f'Accuracy: {np.round(accuracy(true_positives, true_negatives, false_positives, false_negatives), 2)}')
+    print(f'Precision: {np.round(precision(true_positives, false_positives), 2)}')
+    print(f'Recall: {np.round(recall(true_positives, false_negatives), 2)}')
+    print(f'F1-Score: {np.round(f1_score(true_positives, false_positives, false_negatives), 2)}')
+    print('-' * 20)
 def main():
     df = pd.read_csv('fake_and_real_news.csv')
     posts, labels = preprocess_data(df)
@@ -50,21 +120,47 @@ def main():
 
     class NaiveBayes:
         def __init__(self) -> None:
-            self.label_count = {}
+            self.label_count = {'Fake': 0, 'Real': 0}
             self.word_count = {}
+            self.total_words_in_class = {'Fake': 0, 'Real': 0}
         def fit(self, x: np.ndarray, y: np.ndarray) -> None:
             for i in range(len(x)):
                 label = y[i]
                 post = x[i]
+                self.label_count[label] += 1
                 for word in post:
                     if word not in self.word_count:
                         self.word_count[word] = {'Fake': 0, 'Real': 0}
-                    if label == 'Fake':
-                        self.word_count[word]['Fake'] += 1
-                    else:
-                        self.word_count[word]['Real'] += 1
-            self.label_count = {'Fake': sum(label.lower() == 'fake' for label in y), 'Real': sum(label.lower() == 'real' for label in y)}
-
+                    self.word_count[word][label] += 1
+                    self.total_words_in_class[label] += 1
+        def laplace_smoothing(self, word: str, label: str) -> float:
+            if word in self.word_count:
+                count = self.word_count[word][label]
+            else:
+                count = 0
+            p_word_given_label = (count + 1) / (self.total_words_in_class[label] + len(self.word_count))
+            return p_word_given_label
+        def calculate_prior(self, label: str) -> float:
+            return self.label_count[label] / (self.label_count['Fake'] + self.label_count['Real'])
+        @get_time
+        def predict(self, x: np.ndarray) -> np.ndarray:
+            labels = []
+            for i in range(len(x)):
+                post = x[i]
+                p_fake = self.calculate_prior('Fake')
+                p_real = self.calculate_prior('Real')
+                for word in post:
+                    p_fake += np.log(self.laplace_smoothing(word, 'Fake'))
+                    p_real += np.log(self.laplace_smoothing(word, 'Real'))
+                if p_fake > p_real:
+                    labels.append('Fake')
+                else:
+                    labels.append('Real')
+            return np.array(labels, dtype=object)
+    model = NaiveBayes()
+    model.fit(preprocess_text(posts_train), labels_train)
+    predictions = model.predict(preprocess_text(posts_test))
+    metrics(labels_test, predictions)
 
 if __name__ == "__main__":
     main()
