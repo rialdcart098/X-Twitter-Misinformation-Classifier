@@ -14,8 +14,8 @@ def preprocess_data(data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     """
     data = data.copy()
     clean_data = data.dropna()
-    posts = clean_data['Text'].values
-    labels = clean_data['label'].values
+    posts = clean_data['tweet'].values
+    labels = clean_data['majority_target'].values
     return posts, labels
 
 def get_time(func):
@@ -103,10 +103,10 @@ def metrics(y: np.ndarray, y_hat: np.ndarray) -> None:
     :param y_hat: np.ndarray - Predicted labels
     :return: None - Prints the accuracy, precision, recall, and F1-score of the predictions
     """
-    true_positives = np.sum((y == 'Fake') & (y_hat == 'Fake'))
-    true_negatives = np.sum((y == 'Real') & (y_hat == 'Real'))
-    false_positives = np.sum((y == 'Real') & (y_hat == 'Fake'))
-    false_negatives = np.sum((y == 'Fake') & (y_hat == 'Real'))
+    true_positives = np.sum((y == False) & (y_hat == False))
+    true_negatives = np.sum((y == True) & (y_hat == True))
+    false_positives = np.sum((y == True) & (y_hat == False))
+    false_negatives = np.sum((y == False) & (y_hat == True))
     print('-' * 5 + ' Metrics ' + '-' * 5)
     print(f'Accuracy: {np.round(accuracy(true_positives, true_negatives, false_positives, false_negatives), 2)}')
     print(f'Precision: {np.round(precision(true_positives, false_positives), 2)}')
@@ -114,15 +114,15 @@ def metrics(y: np.ndarray, y_hat: np.ndarray) -> None:
     print(f'F1-Score: {np.round(f1_score(true_positives, false_positives, false_negatives), 2)}')
     print('-' * 20)
 def main():
-    df = pd.read_csv('fake_and_real_news.csv')
+    df = pd.read_csv('Features_For_Traditional_ML_Techniques.csv')
     posts, labels = preprocess_data(df)
     posts_train, posts_test, labels_train, labels_test = split_data(posts, labels)
 
     class NaiveBayes:
         def __init__(self) -> None:
-            self.label_count = {'Fake': 0, 'Real': 0}
+            self.label_count = {False: 0, True: 0}
             self.word_count = {}
-            self.total_words_in_class = {'Fake': 0, 'Real': 0}
+            self.total_words_in_class = {False: 0, True: 0}
         def fit(self, x: np.ndarray, y: np.ndarray) -> None:
             for i in range(len(x)):
                 label = y[i]
@@ -130,33 +130,33 @@ def main():
                 self.label_count[label] += 1
                 for word in post:
                     if word not in self.word_count:
-                        self.word_count[word] = {'Fake': 0, 'Real': 0}
+                        self.word_count[word] = {False: 0, True: 0}
                     self.word_count[word][label] += 1
                     self.total_words_in_class[label] += 1
-        def laplace_smoothing(self, word: str, label: str) -> float:
+        def laplace_smoothing(self, word: str, label: bool) -> float:
             if word in self.word_count:
                 count = self.word_count[word][label]
             else:
                 count = 0
             p_word_given_label = (count + 1) / (self.total_words_in_class[label] + len(self.word_count))
             return p_word_given_label
-        def calculate_prior(self, label: str) -> float:
-            return self.label_count[label] / (self.label_count['Fake'] + self.label_count['Real'])
+        def calculate_prior(self, label: bool) -> float:
+            return self.label_count[label] / (self.label_count[False] + self.label_count[True])
         @get_time
         def predict(self, x: np.ndarray) -> np.ndarray:
-            labels = []
+            guesses = []
             for i in range(len(x)):
                 post = x[i]
-                p_fake = self.calculate_prior('Fake')
-                p_real = self.calculate_prior('Real')
+                p_fake = self.calculate_prior(False)
+                p_real = self.calculate_prior(True)
                 for word in post:
-                    p_fake += np.log(self.laplace_smoothing(word, 'Fake'))
-                    p_real += np.log(self.laplace_smoothing(word, 'Real'))
+                    p_fake += np.log(self.laplace_smoothing(word, False))
+                    p_real += np.log(self.laplace_smoothing(word, True))
                 if p_fake > p_real:
-                    labels.append('Fake')
+                    guesses.append(False)
                 else:
-                    labels.append('Real')
-            return np.array(labels, dtype=object)
+                    guesses.append(True)
+            return np.array(guesses, dtype=object)
     model = NaiveBayes()
     model.fit(preprocess_text(posts_train), labels_train)
     predictions = model.predict(preprocess_text(posts_test))
