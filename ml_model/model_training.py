@@ -5,6 +5,7 @@ import pandas as pd
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 from sklearn.model_selection import train_test_split
+import pickle
 import time
 
 def preprocess_data(data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
@@ -31,6 +32,7 @@ def get_time(func):
         return result
     return wrapper
 
+
 def preprocess_text(posts: np.ndarray):
     """
     :param posts: np.ndarray - Input data to preprocess
@@ -56,42 +58,20 @@ def split_data(x: np.ndarray, y: np.ndarray, train_size: float = 0.8) -> Tuple[n
     """
     return train_test_split(x, y, test_size=train_size, random_state=42, stratify=y)
 
+# Metrics
 def accuracy(tp: float, tn: float, fp: float, fn: float) -> float:
-    """
-    :param tp: float - True Positives
-    :param tn: float - True Negatives
-    :param fp: float - False Positives
-    :param fn: float - False Negatives
-    :return: float - The accuracy of the predictions
-    """
     if (tp + tn + fp + fn) == 0: return 0.0
     return (tp + tn) / (tp + tn + fp + fn)
 
 def precision(tp: float, fp: float) -> float:
-    """
-    :param tp: float - True Positives
-    :param fp: float - False Positives
-    :return: float - The precision of the predictions
-    """
     if (tp + fp) == 0: return 0.0
     return tp / (tp + fp)
 
 def recall(tp: float, fn: float) -> float:
-    """
-    :param tp: float - True Positives
-    :param fn: float - False Negatives
-    :return: float - The recall of the predictions
-    """
     if (tp + fn) == 0: return 0.0
     return tp / (tp + fn)
 
 def f1_score(tp: float, fp: float, fn: float) -> float:
-    """
-    :param tp: float - True Positives
-    :param fp: float - False Positives
-    :param fn: float - False Negatives
-    :return: float - The F1-score of the predictions
-    """
     prec = precision(tp, fp)
     rec = recall(tp, fn)
     if (prec + rec) == 0: return 0.0
@@ -113,54 +93,57 @@ def metrics(y: np.ndarray, y_hat: np.ndarray) -> None:
     print(f'Recall: {np.round(recall(true_positives, false_negatives), 2)}')
     print(f'F1-Score: {np.round(f1_score(true_positives, false_positives, false_negatives), 2)}')
     print('-' * 20)
+
+class NaiveBayes:
+    def __init__(self, alpha) -> None:
+        self.label_count = {False: 0, True: 0}
+        self.word_count = {}
+        self.total_words_in_class = {False: 0, True: 0}
+        self.alpha = alpha
+    def fit(self, x: np.ndarray, y: np.ndarray) -> None:
+        for i in range(len(x)):
+            label = y[i]
+            post = x[i]
+            self.label_count[label] += 1
+            for word in post:
+                if word not in self.word_count:
+                    self.word_count[word] = {False: 0, True: 0}
+                self.word_count[word][label] += 1
+                self.total_words_in_class[label] += 1
+    def laplace_smoothing(self, word: str, label: bool) -> float:
+        if word in self.word_count:
+            count = self.word_count[word][label]
+        else:
+            count = 0
+        p_word_given_label = (count + self.alpha) / (self.total_words_in_class[label] + self.alpha * len(self.word_count))
+        return p_word_given_label
+    def calculate_prior(self, label: bool) -> float:
+        return self.label_count[label] / (self.label_count[False] + self.label_count[True])
+    @get_time
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        guesses = []
+        for post in x:
+            p_fake = self.calculate_prior(False)
+            p_real = self.calculate_prior(True)
+            for word in post:
+                p_fake += np.log(self.laplace_smoothing(word, False))
+                p_real += np.log(self.laplace_smoothing(word, True))
+            if p_fake > p_real:
+                guesses.append(False)
+            else:
+                guesses.append(True)
+        return np.array(guesses, dtype=object)
+
 def main():
     df = pd.read_csv('Features_For_Traditional_ML_Techniques.csv')
     posts, labels = preprocess_data(df)
     posts_train, posts_test, labels_train, labels_test = split_data(posts, labels)
-
-    class NaiveBayes:
-        def __init__(self) -> None:
-            self.label_count = {False: 0, True: 0}
-            self.word_count = {}
-            self.total_words_in_class = {False: 0, True: 0}
-        def fit(self, x: np.ndarray, y: np.ndarray) -> None:
-            for i in range(len(x)):
-                label = y[i]
-                post = x[i]
-                self.label_count[label] += 1
-                for word in post:
-                    if word not in self.word_count:
-                        self.word_count[word] = {False: 0, True: 0}
-                    self.word_count[word][label] += 1
-                    self.total_words_in_class[label] += 1
-        def laplace_smoothing(self, word: str, label: bool) -> float:
-            if word in self.word_count:
-                count = self.word_count[word][label]
-            else:
-                count = 0
-            p_word_given_label = (count + 1) / (self.total_words_in_class[label] + len(self.word_count))
-            return p_word_given_label
-        def calculate_prior(self, label: bool) -> float:
-            return self.label_count[label] / (self.label_count[False] + self.label_count[True])
-        @get_time
-        def predict(self, x: np.ndarray) -> np.ndarray:
-            guesses = []
-            for i in range(len(x)):
-                post = x[i]
-                p_fake = self.calculate_prior(False)
-                p_real = self.calculate_prior(True)
-                for word in post:
-                    p_fake += np.log(self.laplace_smoothing(word, False))
-                    p_real += np.log(self.laplace_smoothing(word, True))
-                if p_fake > p_real:
-                    guesses.append(False)
-                else:
-                    guesses.append(True)
-            return np.array(guesses, dtype=object)
-    model = NaiveBayes()
+    model = NaiveBayes(alpha=1.5)
     model.fit(preprocess_text(posts_train), labels_train)
-    predictions = model.predict(preprocess_text(posts_test))
-    metrics(labels_test, predictions)
+
+    with open('model.pkl', 'wb') as fin:
+        pickle.dump(model, fin)
+    print('Model saved to model.pkl')
 
 if __name__ == "__main__":
     main()

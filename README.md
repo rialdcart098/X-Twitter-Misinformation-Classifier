@@ -1,4 +1,6 @@
-# X-Twitter-Misinformation-Classifier
+# X/Twitter Misinformation Classifier
+
+Uses Naive Bayes to classify tweets as misinformation or not based on a large dataset of labeled tweets.
 
 ### Credits:
 
