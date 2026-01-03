@@ -83,10 +83,10 @@ def metrics(y: np.ndarray, y_hat: np.ndarray) -> None:
     :param y_hat: np.ndarray - Predicted labels
     :return: None - Prints the accuracy, precision, recall, and F1-score of the predictions
     """
-    true_positives = np.sum((y == False) & (y_hat == False))
-    true_negatives = np.sum((y == True) & (y_hat == True))
-    false_positives = np.sum((y == True) & (y_hat == False))
-    false_negatives = np.sum((y == False) & (y_hat == True))
+    true_positives = np.sum((y == True) & (y_hat == True))
+    true_negatives = np.sum((y == False) & (y_hat == False))
+    false_positives = np.sum((y == False) & (y_hat == True))
+    false_negatives = np.sum((y == True) & (y_hat == False))
     print('-' * 5 + ' Metrics ' + '-' * 5)
     print(f'Accuracy: {np.round(accuracy(true_positives, true_negatives, false_positives, false_negatives), 2)}')
     print(f'Precision: {np.round(precision(true_positives, false_positives), 2)}')
@@ -118,20 +118,17 @@ class NaiveBayes:
         p_word_given_label = (count + self.alpha) / (self.total_words_in_class[label] + self.alpha * len(self.word_count))
         return p_word_given_label
     def calculate_prior(self, label: bool) -> float:
-        return self.label_count[label] / (self.label_count[False] + self.label_count[True])
+        return (self.label_count[label] + self.alpha) / (self.label_count[False] + self.label_count[True] + 2 * self.alpha)
     @get_time
     def predict(self, x: np.ndarray) -> np.ndarray:
         guesses = []
         for post in x:
-            p_fake = self.calculate_prior(False)
-            p_real = self.calculate_prior(True)
+            p_fake = np.log(self.calculate_prior(False))
+            p_real = np.log(self.calculate_prior(True))
             for word in post:
                 p_fake += np.log(self.laplace_smoothing(word, False))
                 p_real += np.log(self.laplace_smoothing(word, True))
-            if p_fake > p_real:
-                guesses.append(False)
-            else:
-                guesses.append(True)
+            guesses.append(p_real > p_fake)
         return np.array(guesses, dtype=object)
 
 def main():
@@ -141,6 +138,8 @@ def main():
     model = NaiveBayes(alpha=1.5)
     model.fit(preprocess_text(posts_train), labels_train)
 
+    # predictions = model.predict(preprocess_text(posts_test))
+    # metrics(labels_test, predictions)
     with open('model.pkl', 'wb') as fin:
         pickle.dump(model, fin)
     print('Model saved to model.pkl')

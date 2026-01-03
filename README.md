@@ -2,6 +2,10 @@
 
 Uses Naive Bayes to classify tweets as misinformation or not based on a large dataset of labeled tweets.
 
+### Stack:
+- Python (Pandas, Scikit-learn for splitting data, numpy, Flask)
+- React
+
 ### Credits:
 
 ---
