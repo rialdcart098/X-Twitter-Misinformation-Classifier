@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import numpy as np
-import pickle
+import dill as pickle
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 import string
@@ -8,14 +9,23 @@ import string
 with open('model.pkl', 'rb') as fin:
     model = pickle.load(fin)
 app = Flask(__name__)
+CORS(app)
 stop_words = set(stopwords.words('english') + list(string.punctuation))
-def preprocess_text(post: str) -> np.ndarray:
+def preprocess_text(posts: np.ndarray):
     """
-    :param post: str - Input text to preprocess
-    :return: np.ndarray - The preprocessed text data
+    :param posts: np.ndarray - Input data to preprocess
+    :return: np.ndarray or string - The preprocessed text data
     """
-    processed_post = np.array([i.lower() for i in word_tokenize(post) if i.lower() not in stop_words])
-    return processed_post
+    stop_words = set(stopwords.words('english') + list(string.punctuation))
+    if isinstance(posts, str):
+        posts = np.array([posts])
+    processed_posts = []
+    for i, post in enumerate(posts):
+        post = np.array([i.lower() for i in word_tokenize(post) if i.lower() not in stop_words]).astype(posts.dtype)
+        processed_posts.append(post)
+    if len(posts) == 1:
+        return processed_posts[0]
+    return np.array(processed_posts, dtype=object)
 @app.route('/predict', methods=['POST'])
 def predict():
     """
@@ -27,6 +37,7 @@ def predict():
     tweet = data['tweet']
     processed_tweet = preprocess_text(tweet)
     prediction = model.predict([processed_tweet])
+    print(prediction[0])
     return jsonify({'prediction': bool(prediction[0])})
 
 @app.route('/health', methods=['GET'])

@@ -1,20 +1,21 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+// import { useState } from 'react'
 import './App.css'
 import axios from 'axios'
 
 function App() {
-    const [link, setLink] = useState('')
     const classify = async e => {
         e.preventDefault()
-        axios.post('http://localhost:8000/classify', { link: link })
+        const link = e.target.message.value
+        axios.post('http://localhost:1337/predict', { tweet: link })
+            .then(response => {
+                alert(`The tweet is classified as: ${response.data.prediction}`)
+            })
     }
     return (
         <div>
             <h1>Twitter Misinformation Classifier</h1>
             <form onSubmit={classify}>
-                <input type="text" placeholder="Link" />
+                <textarea name="message" rows='10' placeholder="Type here..."></textarea>
                 <button type='submit'>Classify</button>
             </form>
 

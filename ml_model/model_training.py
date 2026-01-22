@@ -5,7 +5,7 @@ import pandas as pd
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 from sklearn.model_selection import train_test_split
-import pickle
+import dill as pickle
 import time
 
 def preprocess_data(data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
@@ -88,6 +88,10 @@ def metrics(y: np.ndarray, y_hat: np.ndarray) -> None:
     false_positives = np.sum((y == False) & (y_hat == True))
     false_negatives = np.sum((y == True) & (y_hat == False))
     print('-' * 5 + ' Metrics ' + '-' * 5)
+    print(f'True positives: {true_positives}')
+    print(f'True negatives: {true_negatives}')
+    print(f'False positives: {false_positives}')
+    print(f'False negatives: {false_negatives}')
     print(f'Accuracy: {np.round(accuracy(true_positives, true_negatives, false_positives, false_negatives), 2)}')
     print(f'Precision: {np.round(precision(true_positives, false_positives), 2)}')
     print(f'Recall: {np.round(recall(true_positives, false_negatives), 2)}')
@@ -138,11 +142,13 @@ def main():
     model = NaiveBayes(alpha=1.5)
     model.fit(preprocess_text(posts_train), labels_train)
 
-    # predictions = model.predict(preprocess_text(posts_test))
-    # metrics(labels_test, predictions)
-    with open('model.pkl', 'wb') as fin:
-        pickle.dump(model, fin)
-    print('Model saved to model.pkl')
+    predictions = model.predict(preprocess_text(posts_test))
+    metrics(labels_test, predictions)
+
+    # This block is for saving the model
+    # with open('model.pkl', 'wb') as fin:
+    #     pickle.dump(model, fin)
+    # print('Model saved to model.pkl')
 
 if __name__ == "__main__":
     main()
