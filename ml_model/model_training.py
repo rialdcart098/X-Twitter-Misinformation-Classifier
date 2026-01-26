@@ -5,6 +5,8 @@ import pandas as pd
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 import dill as pickle
 import time
 
@@ -16,7 +18,7 @@ def preprocess_data(data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     data = data.copy()
     clean_data = data.dropna()
     posts = clean_data['tweet'].values
-    labels = clean_data['majority_target'].values
+    labels = clean_data['majority_target'].values.astype(int)
     return posts, labels
 
 def get_time(func):
@@ -98,57 +100,29 @@ def metrics(y: np.ndarray, y_hat: np.ndarray) -> None:
     print(f'F1-Score: {np.round(f1_score(true_positives, false_positives, false_negatives), 2)}')
     print('-' * 20)
 
-class NaiveBayes:
-    def __init__(self, alpha) -> None:
-        self.label_count = {False: 0, True: 0}
-        self.word_count = {}
-        self.total_words_in_class = {False: 0, True: 0}
-        self.alpha = alpha
-    def fit(self, x: np.ndarray, y: np.ndarray) -> None:
-        for i in range(len(x)):
-            label = y[i]
-            post = x[i]
-            self.label_count[label] += 1
-            for word in post:
-                if word not in self.word_count:
-                    self.word_count[word] = {False: 0, True: 0}
-                self.word_count[word][label] += 1
-                self.total_words_in_class[label] += 1
-    def laplace_smoothing(self, word: str, label: bool) -> float:
-        if word in self.word_count:
-            count = self.word_count[word][label]
-        else:
-            count = 0
-        p_word_given_label = (count + self.alpha) / (self.total_words_in_class[label] + self.alpha * len(self.word_count))
-        return p_word_given_label
-    def calculate_prior(self, label: bool) -> float:
-        return (self.label_count[label] + self.alpha) / (self.label_count[False] + self.label_count[True] + 2 * self.alpha)
-    @get_time
-    def predict(self, x: np.ndarray) -> np.ndarray:
-        guesses = []
-        for post in x:
-            p_fake = np.log(self.calculate_prior(False))
-            p_real = np.log(self.calculate_prior(True))
-            for word in post:
-                p_fake += np.log(self.laplace_smoothing(word, False))
-                p_real += np.log(self.laplace_smoothing(word, True))
-            guesses.append(p_real > p_fake)
-        return np.array(guesses, dtype=object)
-
 def main():
     df = pd.read_csv('Features_For_Traditional_ML_Techniques.csv')
-    posts, labels = preprocess_data(df)
-    posts_train, posts_test, labels_train, labels_test = split_data(posts, labels)
-    model = NaiveBayes(alpha=1.5)
-    model.fit(preprocess_text(posts_train), labels_train)
+    labels = df['majority_target'].astype(int)
+    vectorizer = TfidfVectorizer()
+    posts = vectorizer.fit_transform(df['tweet'])  # keep as sparse
+    posts_train, posts_test, labels_train, labels_test = train_test_split(
+        posts, labels, test_size=0.2, random_state=42, stratify=labels
+    )
+    model = LogisticRegression(max_iter=1000)
+    model.fit(posts_train, labels_train)
 
-    predictions = model.predict(preprocess_text(posts_test))
-    metrics(labels_test, predictions)
+    # This block is for evaluating the model
+    predictions = model.predict(posts_test)
+    metrics(labels_test.values, predictions)
 
     # This block is for saving the model
     # with open('model.pkl', 'wb') as fin:
     #     pickle.dump(model, fin)
     # print('Model saved to model.pkl')
+    # with open('vectorizer.pkl', 'wb') as fin:
+    #     pickle.dump(vectorizer, fin)
+    # print('Vectorizer saved to vectorizer.pkl')
 
 if __name__ == "__main__":
     main()
+

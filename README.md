@@ -1,10 +1,10 @@
 # X/Twitter Misinformation Classifier
 
-Uses Naive Bayes to classify tweets as misinformation or not based on a large dataset of labeled tweets.
+Uses Logistic Regression to classify tweets as misinformation or not based on a large dataset of labeled tweets.
 
 ### Stack:
-- Python (Pandas, Scikit-learn for splitting data, numpy, Flask)
-- React
+- Python (Pandas, Scikit-learn, numpy, Flask)
+- React (Frontend)
 
 ### Credits:
 

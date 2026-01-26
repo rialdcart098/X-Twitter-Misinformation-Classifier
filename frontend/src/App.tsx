@@ -8,7 +8,7 @@ function App() {
         const link = e.target.message.value
         axios.post('http://localhost:1337/predict', { tweet: link })
             .then(response => {
-                alert(`The tweet is classified as: ${response.data.prediction}`)
+                alert(`The tweet is classified as: ${response.data.prediction ? 'Legitimate' : 'Misinformation'} with a confidence of ${response.data.confidence}%`)
             })
     }
     return (
