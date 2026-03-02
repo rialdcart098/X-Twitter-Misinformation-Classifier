@@ -19,7 +19,7 @@ def preprocess_data(data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     clean_data = data.dropna()
     posts = clean_data['tweet'].values
     labels = clean_data['majority_target'].values.astype(int)
-    return posts, labels
+    return posts, labelsstart_time
 
 def get_time(func):
     """
@@ -30,7 +30,7 @@ def get_time(func):
         start_time = time.time()
         result = func(*args, **kwargs)
         end_time = time.time()
-        print(f"Function '{func.__name__}' executed in {end_time - start_time:.4f}s")
+        print(f"Function '{func.__name__}' executed in {end_time - :.4f}s")
         return result
     return wrapper
 

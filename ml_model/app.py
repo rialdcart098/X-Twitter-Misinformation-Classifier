@@ -3,6 +3,7 @@ from flask_cors import CORS
 import numpy as np
 import dill as pickle
 from nltk.corpus import stopwords
+import psycopg2
 from nltk import word_tokenize
 import string
 import os
@@ -16,10 +17,19 @@ with open('model.pkl', 'rb') as fin:
 with open('vectorizer.pkl', 'rb') as fin:
     vectorizer = pickle.load(fin)
 app = Flask(__name__)
+
 CORS(app)
+
 stop_words = set(stopwords.words('english') + list(string.punctuation))
 
-
+def get_db_connection():
+    conn = psycopg2.connect(
+        port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+    return conn
 
 def preprocess_text(link: str):
     """
@@ -31,10 +41,10 @@ def preprocess_text(link: str):
     headers = {"Authorization": f"Bearer {BEARER_TOKEN}"}
     response = requests.get(f"https://api.twitter.com/2/tweets/{linkID}", headers=headers)
     response.raise_for_status()
-    tweet_data = response.json()['data']['text']
-    tweet_data = vectorizer.transform([tweet_data])
+    tweet_text = response.json()['data']['text']
+    tweet_data = vectorizer.transform([tweet_text])
     print(type(tweet_data))
-    return tweet_data
+    return tweet_data, tweet_text
 @app.route('/predict', methods=['POST'])
 def predict():
     """
@@ -44,12 +54,35 @@ def predict():
     """
     data = request.get_json()
     tweet = data['tweet']
-    processed_tweet = preprocess_text(tweet)
-    certainties = model.predict_proba(processed_tweet)
-    prediction = np.argmax(certainties, axis=1)
-    confidence = np.round(certainties[0, prediction[0]] * 100, 2)
-    print(prediction)
-    return jsonify({'prediction': bool(prediction[0]), 'confidence': float(confidence)})
+    # processed_tweet, tweet_text = preprocess_text(tweet)
+    # certainties = model.predict_proba(processed_tweet)
+    # prediction = np.argmax(certainties, axis=1)
+    # confidence = np.round(certainties[0, prediction[0]] * 100, 2)
+    # print(prediction)
+    # return jsonify({'prediction': bool(prediction[0]), 'confidence': float(confidence), 'tweet': tweet_text})
+    return jsonify({ 'prediction': True, 'confidence': 0.95, 'tweet': 'With his Golden Dome announcement today, @POTUS outlined a bold vision for layered defense to safeguard the homeland. We are ready now to support this mission with combat-proven systems and an open systems architecture that integrates the best of American technology.' })
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    """
+    API endpoint to receive feedback on predictions
+    Expects a JSON payload with 'tweet', 'prediction', and 'correct' fields
+    :return: JSON - Acknowledgment of feedback receipt
+    """
+    data = request.get_json()
+    tweet = data['tweet_text']
+    prediction = bool(data['prediction'])
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO tweets (tweet_text, majority_target) VALUES (%s, %s)",
+        (tweet, prediction)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({'message': 'Feedback received successfully'})
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -61,4 +94,3 @@ def health_check():
 
 if __name__ == '__main__':
     app.run(port=1337, debug=True)
-# curl -X GET https://api.twitter.com/2/tweets/1924971025655017833 -H "Authorization: Bearer AAAAAAAAAAAAAAAAAAAAAONz6gEAAAAAM3q2Ke8pMuAYpFjJaqJeL9iNIOA%3DNLfDJDCJFZbodXEhm31GZTMtHZRAfPjBLoWVCM407Ktfjawk4p
