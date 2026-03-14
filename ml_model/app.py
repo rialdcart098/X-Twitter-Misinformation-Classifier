@@ -36,10 +36,11 @@ def preprocess_text(link: str):
     :param posts: np.ndarray - Input data to preprocess
     :return: np.ndarray or string - The preprocessed text data
     """
-    linkID = link.split('/')[-1]
+    link_id = link.split('/')[-1]
     BEARER_TOKEN = os.getenv("BEARER_TOKEN")
     headers = {"Authorization": f"Bearer {BEARER_TOKEN}"}
-    response = requests.get(f"https://api.twitter.com/2/tweets/{linkID}", headers=headers)
+    print(headers)
+    response = requests.get(f"https://api.twitter.com/2/tweets/{link_id}", headers=headers)
     response.raise_for_status()
     tweet_text = response.json()['data']['text']
     tweet_data = vectorizer.transform([tweet_text])
@@ -54,13 +55,13 @@ def predict():
     """
     data = request.get_json()
     tweet = data['tweet']
-    # processed_tweet, tweet_text = preprocess_text(tweet)
-    # certainties = model.predict_proba(processed_tweet)
-    # prediction = np.argmax(certainties, axis=1)
-    # confidence = np.round(certainties[0, prediction[0]] * 100, 2)
-    # print(prediction)
-    # return jsonify({'prediction': bool(prediction[0]), 'confidence': float(confidence), 'tweet': tweet_text})
-    return jsonify({ 'prediction': True, 'confidence': 0.95, 'tweet': 'With his Golden Dome announcement today, @POTUS outlined a bold vision for layered defense to safeguard the homeland. We are ready now to support this mission with combat-proven systems and an open systems architecture that integrates the best of American technology.' })
+    processed_tweet, tweet_text = preprocess_text(tweet)
+    certainties = model.predict_proba(processed_tweet)
+    prediction = np.argmax(certainties, axis=1)
+    confidence = np.round(certainties[0, prediction[0]] * 100, 2)
+    print(prediction)
+    return jsonify({'prediction': bool(prediction[0]), 'confidence': float(confidence), 'tweet': tweet_text})
+    # return jsonify({ 'prediction': True, 'confidence': 0.95, 'tweet': 'With his Golden Dome announcement today, @POTUS outlined a bold vision for layered defense to safeguard the homeland. We are ready now to support this mission with combat-proven systems and an open systems architecture that integrates the best of American technology.' })
 @app.route('/feedback', methods=['POST'])
 def feedback():
     """

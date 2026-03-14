@@ -2,6 +2,7 @@ import axios from "axios";
 import { useState } from "react";
 import thumbsUp from '../assets/thumbs-up.svg'
 import thumbsDown from '../assets/thumbs-down.svg'
+import * as React from "react";
 
 function Content() {
     const [prediction, setPrediction] = useState<string | null>(null);
@@ -9,9 +10,11 @@ function Content() {
     const [tweet_text, setTweetText] = useState<string | null>(null);
     const [feedback, setFeedback] = useState<boolean | null>(null);
 
-    async function classify(event) {
+    async function classify(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
-        const link = event.target.message.value
+        const form = event.target as HTMLFormElement
+        const linkInput = form.elements.namedItem('message') as HTMLInputElement
+        const link = linkInput.value
         axios.post('http://localhost:1337/predict', { tweet: link })
             .then(response => {
                 setPrediction(response.data.prediction);
@@ -20,12 +23,12 @@ function Content() {
             })
     }
 
-    async function send_feedback(event) {
+    async function send_feedback(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (feedback === null) {
             alert('Please select feedback.')
         }
-        const feedback_prediction = feedback === 'correct' ? prediction : !prediction
+        const feedback_prediction = feedback ? prediction : !prediction
         axios.post('http://localhost:1337/feedback', {
             tweet_text,
             prediction: feedback_prediction

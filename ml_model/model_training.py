@@ -30,7 +30,7 @@ def get_time(func):
         start_time = time.time()
         result = func(*args, **kwargs)
         end_time = time.time()
-        print(f"Function '{func.__name__}' executed in {end_time - :.4f}s")
+        print(f"Function '{func.__name__}' executed in {end_time - start_time:.4f}s")
         return result
     return wrapper
 
