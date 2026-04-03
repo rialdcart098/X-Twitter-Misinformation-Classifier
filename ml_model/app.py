@@ -2,9 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 import dill as pickle
-from nltk.corpus import stopwords
 import psycopg2
-from nltk import word_tokenize
 import string
 import os
 import requests
@@ -20,7 +18,6 @@ app = Flask(__name__)
 
 CORS(app)
 
-stop_words = set(stopwords.words('english') + list(string.punctuation))
 
 def get_db_connection():
     conn = psycopg2.connect(
