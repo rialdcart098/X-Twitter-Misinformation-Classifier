@@ -31,18 +31,21 @@ def get_db_connection():
     )
     return conn
 
-def preprocess_text(link: str):
+def preprocess_text(tweet_text: str):
     """
-    :param posts: np.ndarray - Input data to preprocess
+    :param tweet_text: str - Tweet text to preprocess
     :return: np.ndarray or string - The preprocessed text data
     """
-    link_id = link.split('/')[-1]
-    BEARER_TOKEN = os.getenv("BEARER_TOKEN")
-    headers = {"Authorization": f"Bearer {BEARER_TOKEN}"}
-    print(headers)
-    response = requests.get(f"https://api.twitter.com/2/tweets/{link_id}", headers=headers)
-    response.raise_for_status()
-    tweet_text = response.json()['data']['text']
+
+    # CODE GRAVEYARD (RIP)
+    # link_id = link.split('/')[-1]
+    # BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+    # headers = {"Authorization": f"Bearer {BEARER_TOKEN}"}
+    # print(headers)
+    # response = requests.get(f"https://api.twitter.com/2/tweets/{link_id}", headers=headers)
+    # response.raise_for_status()
+    # tweet_text = response.json()['data']['text']
+
     tweet_data = vectorizer.transform([tweet_text])
     print(type(tweet_data))
     return tweet_data, tweet_text
@@ -58,7 +61,7 @@ def predict():
     processed_tweet, tweet_text = preprocess_text(tweet)
     certainties = model.predict_proba(processed_tweet)
     prediction = np.argmax(certainties, axis=1)
-    confidence = np.round(certainties[0, prediction[0]] * 100, 2)
+    confidence = np.round(certainties[0, prediction[0]], 2)
     print(prediction)
     return jsonify({'prediction': bool(prediction[0]), 'confidence': float(confidence), 'tweet': tweet_text})
     # return jsonify({ 'prediction': True, 'confidence': 0.95, 'tweet': 'With his Golden Dome announcement today, @POTUS outlined a bold vision for layered defense to safeguard the homeland. We are ready now to support this mission with combat-proven systems and an open systems architecture that integrates the best of American technology.' })
@@ -94,4 +97,4 @@ def health_check():
     return jsonify({'status': 'healthy'})
 
 if __name__ == '__main__':
-    app.run(port=1337, debug=True)
+    app.run(port=1337)

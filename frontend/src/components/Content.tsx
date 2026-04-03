@@ -13,7 +13,7 @@ function Content() {
     async function classify(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
         const form = event.target as HTMLFormElement
-        const linkInput = form.elements.namedItem('message') as HTMLInputElement
+        const linkInput = form.elements.namedItem('message') as HTMLTextAreaElement
         const link = linkInput.value
         axios.post('http://localhost:1337/predict', { tweet: link })
             .then(response => {
@@ -42,9 +42,20 @@ function Content() {
 
     return (
         <div className='flex flex-col items-center justify-center gap-8'>
-            <h2 className='text-3xl text-green-300 font-almarai font-medium'>Enter the link of the tweet you want to classify:</h2>
-            <form onSubmit={classify}>
-                <input type='text' name='message' placeholder='Enter tweet link here' className='py-1.5 pr-3 pl-1 p-2 rounded w-96 gap-2 bg-purple-200 focus:outline-none ' />
+            <h2 className='text-3xl text-green-300 font-almarai font-medium'>Enter the tweet you want to classify:</h2>
+            <form 
+                onSubmit={classify}
+                className='flex items-center'
+            >
+                <textarea
+                    name='message'
+                    placeholder='Enter tweet text here'
+                    className='py-1.5 pr-3 pl-1 p-2 rounded w-96 bg-purple-200 focus:outline-none'
+                    onInput={(e) => {
+                        e.target.style.height = "auto";
+                        e.target.style.height = e.target.scrollHeight + "px";
+                    }}
+                />
                 <button type='submit' className='cursor-pointer m-4 bg-green-300 p-3 font-semibold text-xl text-purple-950 font-almarai rounded-lg hover:text-purple-800 transition-all ease-in-out'>Classify</button>
             </form>
             {prediction !== null && confidence !== null && (

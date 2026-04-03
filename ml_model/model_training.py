@@ -2,6 +2,7 @@ import string
 from typing import Tuple
 import numpy as np
 import pandas as pd
+import os
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 from sklearn.model_selection import train_test_split
@@ -19,7 +20,7 @@ def preprocess_data(data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     clean_data = data.dropna()
     posts = clean_data['tweet'].values
     labels = clean_data['majority_target'].values.astype(int)
-    return posts, labelsstart_time
+    return posts, labels
 
 def get_time(func):
     """
@@ -101,7 +102,9 @@ def metrics(y: np.ndarray, y_hat: np.ndarray) -> None:
     print('-' * 20)
 
 def main():
-    df = pd.read_csv('Features_For_Traditional_ML_Techniques.csv')
+    BASE_DIR = os.path.dirname(__file__)  # script directory
+    csv_path = os.path.join(BASE_DIR, 'Features_For_Traditional_ML_Techniques.csv')
+    df = pd.read_csv(csv_path)
     labels = df['majority_target'].astype(int)
     vectorizer = TfidfVectorizer()
     posts = vectorizer.fit_transform(df['tweet'])  # keep as sparse
