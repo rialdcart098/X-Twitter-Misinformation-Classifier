@@ -5,15 +5,17 @@ import thumbsDown from '../assets/thumbs-down.svg'
 import * as React from "react";
 
 function Content() {
-    const BACKEND_URL = 'http://localhost:1337' // import.meta.env.VITE_BACKEND_URL
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
     const [prediction, setPrediction] = useState<string | null>(null);
     const [confidence, setConfidence] = useState<number | null>(null);
     const [tweet_text, setTweetText] = useState<string | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
     const [feedback, setFeedback] = useState<boolean | null>(null);
 
     async function classify(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
+        setLoading(true)
         const form = event.target as HTMLFormElement
         const linkInput = form.elements.namedItem('message') as HTMLTextAreaElement
         const link = linkInput.value
@@ -22,6 +24,11 @@ function Content() {
                 setPrediction(response.data.prediction);
                 setConfidence(response.data.confidence);
                 setTweetText(response.data.tweet)
+                setLoading(false)
+            })
+            .catch(err => {
+                console.error('Error classifying tweet:', err)
+                alert('An error occurred while classifying the tweet. Please try again later.')
             })
     }
 
@@ -60,6 +67,9 @@ function Content() {
                 />
                 <button type='submit' className='cursor-pointer m-4 bg-green-300 p-3 font-semibold text-xl text-purple-950 font-almarai rounded-lg hover:text-purple-800 transition-all ease-in-out'>Classify</button>
             </form>
+            {prediction === null && loading &&
+                <p className='text-green-400 font-almarai font-thin'>Classifying... (This can take a while)</p>
+            }
             {prediction !== null && confidence !== null && (
                 <div className='text-center'>
                     <h3 className='text-2xl text-green-300 font-almarai font-medium'>Our model predicted this post as</h3>
