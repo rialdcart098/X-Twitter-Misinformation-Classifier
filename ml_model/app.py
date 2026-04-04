@@ -8,7 +8,6 @@ import os
 import requests
 from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
-load_dotenv()
 
 with open('model.pkl', 'rb') as fin:
     model = pickle.load(fin)
@@ -21,6 +20,7 @@ CORS(app)
 
 def get_db_connection():
     conn = psycopg2.connect(
+        host=os.getenv('DB_HOST'),
         port=os.getenv("DB_PORT"),
         dbname=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),

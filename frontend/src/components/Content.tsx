@@ -5,7 +5,7 @@ import thumbsDown from '../assets/thumbs-down.svg'
 import * as React from "react";
 
 function Content() {
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+    const BACKEND_URL = 'http://localhost:1337' // import.meta.env.VITE_BACKEND_URL
 
     const [prediction, setPrediction] = useState<string | null>(null);
     const [confidence, setConfidence] = useState<number | null>(null);
