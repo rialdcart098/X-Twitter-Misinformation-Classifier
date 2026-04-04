@@ -5,6 +5,8 @@ import thumbsDown from '../assets/thumbs-down.svg'
 import * as React from "react";
 
 function Content() {
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
     const [prediction, setPrediction] = useState<string | null>(null);
     const [confidence, setConfidence] = useState<number | null>(null);
     const [tweet_text, setTweetText] = useState<string | null>(null);
@@ -15,7 +17,7 @@ function Content() {
         const form = event.target as HTMLFormElement
         const linkInput = form.elements.namedItem('message') as HTMLTextAreaElement
         const link = linkInput.value
-        axios.post('http://localhost:1337/predict', { tweet: link })
+        axios.post(`${BACKEND_URL}/predict`, { tweet: link })
             .then(response => {
                 setPrediction(response.data.prediction);
                 setConfidence(response.data.confidence);
@@ -29,7 +31,7 @@ function Content() {
             alert('Please select feedback.')
         }
         const feedback_prediction = feedback ? prediction : !prediction
-        axios.post('http://localhost:1337/feedback', {
+        axios.post(`${BACKEND_URL}/feedback`, {
             tweet_text,
             prediction: feedback_prediction
         }).then(response => {
@@ -52,8 +54,8 @@ function Content() {
                     placeholder='Enter tweet text here'
                     className='py-1.5 pr-3 pl-1 p-2 rounded w-96 bg-purple-200 focus:outline-none'
                     onInput={(e) => {
-                        e.target.style.height = "auto";
-                        e.target.style.height = e.target.scrollHeight + "px";
+                        (e.target as HTMLTextAreaElement).style.height = "auto";
+                        (e.target as HTMLTextAreaElement).style.height = (e.target as HTMLTextAreaElement).scrollHeight + "px";
                     }}
                 />
                 <button type='submit' className='cursor-pointer m-4 bg-green-300 p-3 font-semibold text-xl text-purple-950 font-almarai rounded-lg hover:text-purple-800 transition-all ease-in-out'>Classify</button>
